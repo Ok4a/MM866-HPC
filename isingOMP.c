@@ -264,7 +264,7 @@ void main(int argc, char const *argv[])
     // For loop to create vector of N values
     for (i = 1; i < num_N; i++)
     {
-        // Increments by rounded down value of squareroot of current value
+        
         N_vec[i] = N_vec[i - 1] * sqrt(2);
         if ((N_vec[i] % 2) == 1)
         {
@@ -273,6 +273,7 @@ void main(int argc, char const *argv[])
         } 
 
     }
+
 
 
     omp_set_num_threads(12);
