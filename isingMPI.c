@@ -9,7 +9,7 @@
 int **grid;
 
 // A function for the magnetization. Takes grid length N as input
-double magn(int N)
+double magn(int N, int num_rows)
 {
     // Indices over the grid
     int i = 0;
@@ -19,7 +19,7 @@ double magn(int N)
     double sum = 0.0;
 
     // Parallelize the double for loop over the grid
-    for (i = 0; i < N; i++)
+    for (i = 1; i < num_rows-2; i++)
     {
         for (j = 0; j < N; j++)
         {
@@ -36,7 +36,7 @@ double magn(int N)
 }
 
 // A function for the energy of the grid. Takes grid length N as input
-int energy(int N)
+int energy(int N, int num_rows)
 {
     // Indices i and j for the grid and variables sum and spin_sum
     int i = 0;
@@ -51,7 +51,7 @@ int energy(int N)
     int down;
     
     // Parallelize the double for loop over the grid
-    for (i = 0; i < N; i++)
+    for (i = 1; i < num_rows-2; i++)
     {
         for (j = 0; j < N; j++)
         {
@@ -135,18 +135,18 @@ void sweep(int N, double beta, int start_i, int start_j, unsigned int seed){
     }
 }
 
-double* ising(int argc, char **argv, int N, double beta)
+double* ising(int N, double beta)
 { 
-    MPI_Init(&argc, &argv);
-    int n = 0;
+    MPI_Init(NULL, NULL);
+    int num_threads = 0;
     int id = 0;
-    MPI_Comm_size(MPI_COMM_WORLD, &n);
+    MPI_Comm_size(MPI_COMM_WORLD, &num_threads);
     MPI_Comm_rank(MPI_COMM_WORLD, &id);
 
     MPI_Status status;
     MPI_Request req;
     
-    int num_rows = N/n+2;
+    int num_rows = N/num_threads + 2;
 
 
     int i = 0;
@@ -158,6 +158,18 @@ double* ising(int argc, char **argv, int N, double beta)
 
     unsigned int seed;
 
+    double *mag_vec;
+    int *energy_vec;
+
+    if (id == 0)
+    {
+        mag_vec = (double *) malloc(NoSweeps * sizeof(double));
+        energy_vec = (int *) malloc(NoSweeps * sizeof(double));
+    }
+    
+    double mag_temp = 0.0;
+    int energy_temp = 0.0;
+
     // Vector for output values of ising
     /*double* output = (double*) malloc(4 * sizeof(double));
     
@@ -168,9 +180,6 @@ double* ising(int argc, char **argv, int N, double beta)
     double rnd = 0.0;
     double mag;
     int ener;
-
-    double energy_vec[NoSweeps];
-    double mag_vec[NoSweeps];
 
     double avg_mag = 0.0;
     double avg_energy = 0.0;
@@ -185,7 +194,7 @@ double* ising(int argc, char **argv, int N, double beta)
     }
 
     seed = 42 + id;
-    for (i = 1; i < num_rows-1; i++)
+    for (i = 1; i < num_rows - 1; i++)
     {
         for (j = 0; j < N; j++)
         {
@@ -200,27 +209,46 @@ double* ising(int argc, char **argv, int N, double beta)
             }
         }
     }
-    printf("id: %d: %d, %d, %d, %d\n", id, grid[0][1],grid[1][1],grid[num_rows-2][1],grid[num_rows-1][1]);
+    //printf("id: %d: %d, %d, %d, %d\n", id, grid[0][1],grid[1][1],grid[num_rows-2][1],grid[num_rows-1][1]);
     
 
-    if ((id% 2) == 0)
+    if ((id % 2) == 0)
     {
-        MPI_Send(grid[1], N, MPI_INT, fmod(id-1+n,n), id, MPI_COMM_WORLD);
-        MPI_Send(grid[num_rows-2], N, MPI_INT, fmod(id+1+n,n), id, MPI_COMM_WORLD);
-        MPI_Recv(grid[num_rows-1], N, MPI_INT, fmod(id+1+n,n), fmod(id+1+n,n), MPI_COMM_WORLD, &status);
-        MPI_Recv(grid[0], N, MPI_INT, fmod(id-1+n,n), fmod(id-1+n,n), MPI_COMM_WORLD, &status);
+        // Sends grid information from the even numbered threads to the odd
+        MPI_Send(grid[1], N, MPI_INT, (id-1+num_threads%num_threads), id, MPI_COMM_WORLD);
+        MPI_Send(grid[num_rows-2], N, MPI_INT, (id + 1 + num_threads % num_threads), id, MPI_COMM_WORLD);
+        
+        // Resv grid information from threads with odd id to even id
+        MPI_Recv(grid[num_rows-1], N, MPI_INT, (id + 1 + num_threads % num_threads), (id + 1 + num_threads % num_threads), MPI_COMM_WORLD, &status);
+        MPI_Recv(grid[0], N, MPI_INT, (id - 1 + num_threads % num_threads), (id - 1 + num_threads % num_threads), MPI_COMM_WORLD, &status);
     }
 
-    if ((id% 2) == 1)
+    if ((id % 2) == 1)
     {
-        MPI_Recv(grid[num_rows-1], N, MPI_INT, fmod(id+1+n,n), fmod(id+1+n,n), MPI_COMM_WORLD, &status);
-        MPI_Recv(grid[0], N, MPI_INT, fmod(id-1+n,n), fmod(id-1+n,n), MPI_COMM_WORLD, &status);
-        MPI_Send(grid[1], N, MPI_INT, fmod(id-1+n,n), id, MPI_COMM_WORLD);
-        MPI_Send(grid[num_rows-2], N, MPI_INT, fmod(id+1+n,n), id, MPI_COMM_WORLD);
+        // Resv grid information from threads with even id to odd id
+        MPI_Recv(grid[num_rows-1], N, MPI_INT, (id + 1 + num_threads % num_threads), (id + 1 + num_threads % num_threads), MPI_COMM_WORLD, &status);
+        MPI_Recv(grid[0], N, MPI_INT, (id - 1 + num_threads % num_threads), (id - 1 + num_threads % num_threads), MPI_COMM_WORLD, &status);
+
+        // Sends grid information from threads with odd id to even id        
+        MPI_Send(grid[1], N, MPI_INT, (id - 1 + num_threads % num_threads), id, MPI_COMM_WORLD);
+        MPI_Send(grid[num_rows-2], N, MPI_INT, (id + 1 + num_threads % num_threads), id, MPI_COMM_WORLD);
     }
     
     printf("id: %d: %d, %d, %d, %d\n", id, grid[0][1],grid[1][1],grid[num_rows-2][1],grid[num_rows-1][1]);
 
+    // testing of getting the mag and energy of the system
+    mag_temp = magn(N, num_rows);
+    MPI_Reduce(&mag_temp, &mag_vec[1], 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+
+    energy_temp = energy(N, num_rows);
+    MPI_Reduce(&energy_temp, &energy_vec[1], 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
+
+    if (id == 0)
+    {
+        printf("%f, %d\n", mag_vec[1], energy_vec[1]);
+    }
+    
+    
     /*
     for (k = 0; k < 100; k++)
     {
@@ -237,7 +265,7 @@ double* ising(int argc, char **argv, int N, double beta)
         sweep(N, beta, 1, 0, seed);
         sweep(N, beta, 1, 1, seed);
 
-        mag_vec[k] = magn(N);
+        mpi[k] = magn(N);
         energy_vec[k] = energy(N);
     }
 
@@ -327,6 +355,6 @@ void main(int argc, char **argv)
 
 
    
-   ising(argc, argv, 200, 0.5);
+   ising(1000, 0.5);
    
 }
