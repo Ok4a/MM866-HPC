@@ -340,7 +340,7 @@ void main(int argc, char **argv)
 
 
 
-    for (i = 0; i < 4; i++)
+    for (i = 0; i < 7; i++)
     {   
         /* We pick the number of threads to be 2^i*/
         num_threads = pow(2, i);
