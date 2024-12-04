@@ -391,20 +391,17 @@ void main(int argc, char **argv)
     }
 
     int i;
-    int num_N = 4;
-    int *N_vec;
+
 
     double* data;
     data = (double*) malloc(4 * sizeof(double));
 
-    
-
-    int N = 100;
     double beta = 0.5;
 
     // Allocate space for vector of values of N
-    N_vec = (int *) malloc(num_N * sizeof(int));
-    N_vec[0] = N;
+    int num_N = 4;
+    int N_vec[num_N];
+    N_vec[0] = 100;
 
     // For loop to create vector of N values
     for (i = 1; i < num_N; i++)
@@ -419,9 +416,6 @@ void main(int argc, char **argv)
     }
 
 
-
-
-
     for (int i = 0; i < num_N; i++)
     {
         if (id == 0)
@@ -433,17 +427,11 @@ void main(int argc, char **argv)
         if (id == 0)
         {
             clock_gettime(CLOCK_REALTIME, &stop);
-
             tot_time = (stop.tv_sec - start.tv_sec) + (double)(stop.tv_nsec - start.tv_nsec ) / (double)BILLION;
             data_file = fopen(file_path, "a");
             fprintf(data_file,"%d, %f, %f, %f, %f, %f, %f, %d\n", N_vec[i], beta, data[0], data[1], data[2], data[3], tot_time, num_threads);
             fclose(data_file);
-            //printf("Data %f %f %f %f %f\n", data[0], data[1], data[2], data[3], tot_time);
-            //printf("%d\n", N_vec[i]);
         }
-        
-        
     }
-    
     MPI_Finalize();
 }

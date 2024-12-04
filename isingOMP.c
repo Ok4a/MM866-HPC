@@ -273,23 +273,19 @@ double* ising(int N, double beta)
 }
 
 // Main function
-void main(int argc, char const *argv[])
+void main(int argc, char **argv)
 {
     struct timespec start, stop;
     double tot_time;
     FILE *data_file;
 
 
-    char file_path[] = "OMPdata_";
+    char file_path[26] = "OMPdata_";
     char csv[] = ".csv";
     char time_str[14];
    
-    sprintf(time_str, "%ld", (unsigned long)time(NULL));
-    strcat(file_path, time_str);
+    strcat(file_path, argv[1]);
     strcat(file_path, csv);
-    data_file = fopen(file_path, "w");
-    fprintf(data_file,"%s, %s, %s, %s, %s, %s, %s, %s\n", "N", "beta", "avg_energy", "std_energy", "avg_mag", "std_mag", "tot_time", "num_threads");
-    fclose(data_file);
 
 
     /* Index i, number of different grid lengths num_N and
@@ -326,10 +322,10 @@ void main(int argc, char const *argv[])
 
 
 
-    for (j = 1; j < 3; j++)
+    for (j = 0; j < 4; j++)
     {   
-        num_threads = pow(2,j);
-        printf("%d", num_threads);
+        num_threads = pow(2, j);
+        printf("Number of threads: %d\n", num_threads);
         
         omp_set_num_threads(num_threads);
 
