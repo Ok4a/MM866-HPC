@@ -1,11 +1,12 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <math.h>
-#include <omp.h>
+# include <stdio.h>
+# include <stdlib.h>
+# include <math.h>
+# include <omp.h>
 # include <time.h>
+# include <string.h>
 
-#define NoSweeps 1000
-#define BILLION  1000000000L;
+# define NoSweeps 1000
+# define BILLION  1000000000L;
 int **grid;
 
 // A function for the magnetization. Takes grid length N as input
@@ -24,7 +25,7 @@ double magn(int N)
     {
         for (j = 0; j < N; j++)
         {
-            // Increment sum by the spin at grid position i,j
+            // Increment sum by the spin at grid position i, j
             sum += grid[i][j];
         }
     }
@@ -74,8 +75,8 @@ int energy(int N)
     return (sum);
 }
 
-// A function for the difference in energy between two grids. Takes grid length N and 
-// grid indices i and j as input
+/* A function for the difference in energy between two grids. Takes grid length N and 
+grid indices i and j as input*/
 int energy_diff(int N, int i, int j)
 {
     // Variables diff and spin_sum
@@ -91,16 +92,16 @@ int energy_diff(int N, int i, int j)
     // Evaluates the spin_sum at grid[i][j]
     spin_sum = grid[right][j] + grid[left][j] + grid[i][up] + grid[i][down];
 
-    // Computes the difference in energy between the previous grid and the grid
-    // with changed spin at grid[i][j]
+    /* Computes the difference in energy between the previous grid and the grid
+    with changed spin at grid[i][j]*/
     diff = -1 * ((-1 * grid[i][j]) * spin_sum - grid[i][j] * spin_sum);
 
     // Returns energy difference
     return (diff);
 }
 
-// A function that sweeps through the grid and changes spins if it decreases the energy.
-// Takes grid length N, parameter beta, grid indices start_i and start_j and a seed as input.
+/* A function that sweeps through the grid and changes spins if it decreases the energy.
+Takes grid length N, parameter beta, grid indices start_i and start_j and a seed as input. */
 void sweep(int N, double beta, int start_i, int start_j, unsigned int seed){
     // Indices for grid position
     int i;
@@ -119,14 +120,17 @@ void sweep(int N, double beta, int start_i, int start_j, unsigned int seed){
     {
         for (j = start_j; j < N; j+= 2)
         {
-            // Computes energy difference with curren
+            // Computes energy difference with current indices
             diff = energy_diff(N, i, j);
             if (diff <= 0)
             {
+                // If energy_diff is negative we flip the spin
                 grid[i][j] = -grid[i][j];
             }
             else
             {
+                /* Otherwise, we flip the spin with probability exp(-beta * diff)
+                according to the ISING model*/
                 p = exp(-beta * diff);
                 rnd = rand_r(&seed) / ((double) RAND_MAX);
                 if (rnd < p)
@@ -138,66 +142,80 @@ void sweep(int N, double beta, int start_i, int start_j, unsigned int seed){
     }
 }
 
+// Function that simulates the ISING model
 double* ising(int N, double beta)
 { 
+    /* Indices for the grid i and j, r for random ints 0 or 1
+    and k for number of sweeps we perform as well as number of simulations*/
     int i = 0;
     int j = 0;
     int r = 0;
     int k = 0;
 
-    // Vector for output values of ising
+    // Vector for output values of ising model
     double* output = (double*) malloc(4 * sizeof(double));
     unsigned int seed;
 
-    int diff = 0;
-
-    double p = 0.0;
-    double rnd = 0.0;
-    double mag;
-    int ener;
-
+    // Creates arrays to store energy and magnetization for each iteration
     double energy_vec[NoSweeps];
     double mag_vec[NoSweeps];
 
+    /* Variables avg_mag and avg_energy for storing the computed average magnetization
+    and energy*/
     double avg_mag = 0.0;
     double avg_energy = 0.0;
 
+    // Variables for storing the standard deviation of the energy and the magnetization
     double std_energy = 0.0;
     double std_mag = 0.0;
     
+    // Creates the square grid of length N
     grid = (int **) malloc(N * sizeof(int *));
     for (i = 0; i < N; i++)
     {
         grid[i] = (int *) malloc(N * sizeof(int));
     }
 
+    // Gives a random seed to each thread
     # pragma omp parallel private(i, j, r, seed)
     seed = 42 + omp_get_thread_num();
+
+    // Parallelizes the initialization of the grid
     # pragma omp for collapse(2)
     for (i = 0; i < N; i++)
     {
         for (j = 0; j < N; j++)
         {
+            // Generates randomly 0 or 1
             r = rand_r(&seed) % 2;
             if (r)
             {
+                // If r == 1, set the current position of the grid to 1
                 grid[i][j] = 1;
             }
             else
             {
+                // If r == 0, set the current position of the grid to -1
                 grid[i][j] = -1;
             }
         }
     }
 
+    /* A for loop that sweeps through the grid and changes spins according to the
+    ISING model. This and the following for loop do the same thing, this for-loop
+    takes care of the burn-in period.*/
     for (k = 0; k < 100; k++)
     {
+        /* Sweeps each combination of even and odd indices to avoid
+        interdependence between sweeps across different threads.*/
         sweep(N, beta, 0, 0, seed);
         sweep(N, beta, 0, 1, seed);
         sweep(N, beta, 1, 0, seed);
         sweep(N, beta, 1, 1, seed);
     }
 
+    /* Simulates the ISING model for NoSweeps number of iterations after the burn-in
+    period*/
     for (k = 0; k < NoSweeps; k++)
     {
         sweep(N, beta, 0, 0, seed);
@@ -205,66 +223,98 @@ double* ising(int N, double beta)
         sweep(N, beta, 1, 0, seed);
         sweep(N, beta, 1, 1, seed);
 
+        // For each iteration we compute the magnetization and the energy of the grid
         mag_vec[k] = magn(N);
         energy_vec[k] = energy(N);
     }
 
 
+    /* This for loop sums over the vectors mag_vec and energy_vec in order
+    to compute the average energy and magnetization across all the
+    simulations.*/
     for (i = 0; i < NoSweeps; i++)
     {
+        /* Increments sums avg_mag and avg_energy by the value
+        of mag_vec and energy_vec at the i'th iteration
+        of the simulation*/
         avg_mag += mag_vec[i];
         avg_energy += energy_vec[i];
     }
+    /* Divide avg_mag and avg_energy by NoSweeps to get the average
+    magnetization and energy*/
     avg_mag /= NoSweeps;
     avg_energy /= NoSweeps;
 
+    // A for-loop to compute the standard deviation of the magnetization and the energy
     for (i = 0; i < NoSweeps; i++)
     {
+        /* Increments the sums by the square of the difference between
+        current value of energy_vec / avg_vec.*/
         std_energy += (avg_energy - energy_vec[i]) * (avg_energy - energy_vec[i]);
         std_mag += (avg_mag - mag_vec[i]) * (avg_mag - mag_vec[i]);
     }
 
-    
+    /* Computes standard deviation of the energy and magnetization by taking the square
+    root of the sums computed before divided by NoSweeps - 1. This is to get
+    the unbiased sample-variance and the square-root get the estimated
+    standard deviation*/
     std_energy = sqrt(std_energy/(NoSweeps - 1));
     std_mag = sqrt(std_mag/(NoSweeps - 1));
 
-    //printf("Avg E %f +- %f, avg M %f +- %f\n", sum_ener, std_ener, sum_mag, std_mag);
-
+    /* Assigns the values avg_energy, std_energy, avg_mag and std_mag
+    to be outputs of the function*/
     output[0] = avg_energy;
     output[1] = std_energy;
     output[2] = avg_mag;
     output[3] = std_mag;
 
-    //printf("Output %f %f %f %f\n", output[0], output[1], output[2], output[3]);
-
+    // Returns the output vector
     return(output);
 }
 
+// Main function
 void main(int argc, char const *argv[])
 {
     struct timespec start, stop;
     double tot_time;
     FILE *data_file;
 
+
+    char file_path[] = "OMPdata_";
+    char csv[] = ".csv";
+    char time_str[14];
+   
+    sprintf(time_str, "%ld", (unsigned long)time(NULL));
+    strcat(file_path, time_str);
+    strcat(file_path, csv);
+    data_file = fopen(file_path, "w");
+    fprintf(data_file,"%s, %s, %s, %s, %s, %s, %s, %s\n", "N", "beta", "avg_energy", "std_energy", "avg_mag", "std_mag", "tot_time", "num_threads");
+    fclose(data_file);
+
+
+    /* Index i, number of different grid lengths num_N and
+    array of integers N_vec to store different grid lengths*/
     int i;
+    int j;
     int num_N = 4;
     int *N_vec;
+    int num_threads;
     
-
-    int N = 1000;
+    // Parameter beta for the simulation
     double beta = 0.5;
 
     // Allocate space for vector of values of N
     N_vec = (int *) malloc(num_N * sizeof(int));
-    N_vec[0] = 1000;
-    /*N_vec[1] = 1414;
-    N_vec[2] = 2000;
-    N_vec[3] = 2828;*/
+    
+    // Assign first value of N_vec
+    N_vec[0] = 100;
 
     // For loop to create vector of N values
     for (i = 1; i < num_N; i++)
     {
-        
+        /* New value of N is previous value multiplied by sqrt(2). This is so
+        the next grid constructs a grid of doubled size compared to the grid with length
+        N_vec[i - 1]*/
         N_vec[i] = N_vec[i - 1] * sqrt(2);
         if ((N_vec[i] % 2) == 1)
         {
@@ -276,17 +326,36 @@ void main(int argc, char const *argv[])
 
 
 
-    omp_set_num_threads(12);
-    for (int i = 0; i < num_N; i++)
-    {
-        clock_gettime(CLOCK_REALTIME, &start);
-        double* data = ising(N_vec[i], beta);
-        clock_gettime(CLOCK_REALTIME, &stop);
-        tot_time = (stop.tv_sec - start.tv_sec) + (double)(stop.tv_nsec - start.tv_nsec ) / (double)BILLION;
-        data_file = fopen("test.csv", "a");
-        fprintf(data_file,"%d, %f, %f, %f, %f, %f, %f\n", N_vec[i], beta, data[0], data[1], data[2], data[3], tot_time);
-        fclose(data_file);
-        //printf("Data %f %f %f %f %f\n", data[0], data[1], data[2], data[3], tot_time);
-        printf("%d\n", N_vec[i]);
-    }    
+    for (j = 1; j < 3; j++)
+    {   
+        num_threads = pow(2,j);
+        printf("%d", num_threads);
+        
+        omp_set_num_threads(num_threads);
+
+        // A for loop to collect data for each simulation of the ISING model
+        for (int i = 0; i < num_N; i++)
+        {
+            /* The first three lines time the process of simulating the ISING model
+            using the current value of N*/
+            clock_gettime(CLOCK_REALTIME, &start);
+            double* data = ising(N_vec[i], beta);
+            clock_gettime(CLOCK_REALTIME, &stop);
+
+            // This line computes the total time of the simulation in seconds plus nano-seconds
+            tot_time = (stop.tv_sec - start.tv_sec) + (double)(stop.tv_nsec - start.tv_nsec ) / (double)BILLION;
+
+            // We open a test file to write out the data to
+            data_file = fopen(file_path, "a");
+
+            /* In each row of the data-file we write out the current value of N, the chosen parameter beta
+            the avg and std of the energy and magnetization for the simulation and the total time
+            the simulation took*/
+            fprintf(data_file,"%d, %f, %f, %f, %f, %f, %f, %d\n", N_vec[i], beta, data[0], data[1], data[2], data[3], tot_time, num_threads);
+            
+            // We then close the file
+            fclose(data_file);
+        }    
+    }
+    
 }
