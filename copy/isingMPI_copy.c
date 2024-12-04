@@ -363,55 +363,40 @@ double* ising(int N, double beta, int id, int num_threads)
    
 }
 
-/* Main function which simulates the ISING model for different grid sizes*/
 void main(int argc, char **argv)
 {
 
-    /* Initializes the MPI environment*/
     MPI_Init(NULL, NULL);
-    
-    /* Allocates variables for the number of threads and the id*/
     int num_threads = 0;
     int id = 0;
-
-    /* The first line gets the number of threads and assigns
-    num_threads to be that number. The second line gets the id
-    of each individual thread.*/
     MPI_Comm_size(MPI_COMM_WORLD, &num_threads);
     MPI_Comm_rank(MPI_COMM_WORLD, &id);
 
-    /* Create variables start and stop of type timespec*/
     struct timespec start, stop;
-
-    /* A float for the total time*/
     double tot_time;
-    
-    /* Points to the file we will send the data to*/
     FILE *data_file;
 
-    /* Allocates string for the unique filepath */
     char file_path[26] = "MPIdata_";
-
-    /* ".csv" suffix to be added last*/
     char csv[] = ".csv";
    
-    /* Thread 0 puts data into the filepath*/
     if (id == 0)
     {
+        //sprintf(time_str, "%ld", (unsigned long)time(NULL));
         strcat(file_path, argv[1]);
-        strcat(file_path, csv); 
+        strcat(file_path, csv);
+        /*data_file = fopen(file_path, "w");
+        fprintf(data_file,"%s, %s, %s, %s, %s, %s, %s, %s\n", "N", "beta", "avg_energy", "std_energy", "avg_mag", "std_mag", "tot_time", "num_threads");
+        fclose(data_file);*/
+        
     }
 
-    /* Index i for for-loop over values of N*/
     int i;
 
-    /* Value of beta corresponds to 1/T in the ISING model*/
-    double beta = 0.5;
 
-    /* A vector for storing the output data from the simulation of the ISING mod */
-    double *data;
+    double* data;
     data = (double*) malloc(4 * sizeof(double));
 
+    double beta = 0.5;
 
     // Allocate space for vector of values of N
     int num_N = strtod(argv[3], NULL);
@@ -421,52 +406,32 @@ void main(int argc, char **argv)
     // For loop to create vector of N values
     for (i = 1; i < num_N; i++)
     {
-        /* We want to approximately double the number of entries in the grid
-        so we multiply the previous value of N by sqrt(2)*/
-        N_vec[i] = N_vec[i - 1] * sqrt(2);    
+        N_vec[i] = N_vec[i - 1] * sqrt(2);
+        N_vec[i] += (N_vec[i] % 2);       
     } 
 
     for (i = 0; i < num_N; i++)
     {
-        /* We need the side length of the grid to be divisible by the max
-        thread count. We will at most use 64 threads. 64 is a power of 2, so every time we
-        double the number of threads, the new number of threads will be divisible by 64 and
-        consequently, the grid side length will also be divisible by that number of threads */
         N_vec[i] += 64 - (N_vec[i] % 64);
     }
 
 
     for (int i = 0; i < num_N; i++)
     {
-        /* Thread 0 times the process*/
         if (id == 0)
         {
             clock_gettime(CLOCK_REALTIME, &start);
         }
-        /* We put a barrier here so thread 0 starts at the same time as the
-        other threads and not after*/
         MPI_Barrier(MPI_COMM_WORLD);
-
-        /* Data stores the output of the simulation of the ISING model*/
         data = ising(N_vec[i] , beta, id, num_threads);
-
-        
         if (id == 0)
         {
-            /* Thread 0 saves the time when the process is over*/
             clock_gettime(CLOCK_REALTIME, &stop);
-
-            /* It then computes the total time in seconds and nano seconds*/
-            tot_time = (stop.tv_sec - start.tv_sec) + (double)(stop.tv_nsec - start.tv_nsec) / (double)BILLION;
-
-            /* It then appends the output and parameters to the data-file*/
+            tot_time = (stop.tv_sec - start.tv_sec) + (double)(stop.tv_nsec - start.tv_nsec ) / (double)BILLION;
             data_file = fopen(file_path, "a");
             fprintf(data_file,"%d, %f, %f, %f, %f, %f, %f, %d\n", N_vec[i], beta, data[0], data[1], data[2], data[3], tot_time, num_threads);
-            
-            /* It then closes the file*/
             fclose(data_file);
         }
     }
-    /* We then close the MPI environment.*/
     MPI_Finalize();
 }
