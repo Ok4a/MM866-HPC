@@ -1,0 +1,103 @@
+clc
+clear 
+close
+% Load data
+OMP_data = readmatrix("OMPdata_1733390325.csv");
+MPI_data = readmatrix("MPIdata_1733390385.csv");
+
+% Extract runtime data from OMP matrix
+runtime_OMP = reshape(OMP_data(:, 7), [8,7,5]);
+
+% Matrices of averages and standard deviations of runtime for OMP
+% where row i and column j is the avg/std for side length i and
+% core count j
+avg_runtimeOMP = mean(runtime_OMP, 3);
+std_runtimeOMP = std(runtime_OMP, 0, 3);
+
+% Extract runtime data from MPI matrix
+runtime_MPI = reshape(MPI_data(:, 7), [8, 6, 5]);
+
+% Same as for OMP, now for MPI
+avg_runtimeMPI = mean(runtime_MPI, 3);
+std_runtimeMPI = std(runtime_MPI, 0, 3);
+
+% Vector of different values of N used
+N_vec = OMP_data(1: 8, 1);
+
+% Vectors for different numbers of cores used for OMP and MPI
+% respectively
+Core_vecOMP = 2.^(0: 6);
+Core_vecMPI = 2.^(1: 6);
+
+OMP_speedup_strong = avg_runtimeOMP(1, 1) ./ avg_runtimeOMP(1, 1: end);
+MPI_speedup_strong = avg_runtimeMPI(1, 1) ./ avg_runtimeMPI(1, 1: end);
+
+% Strong scaling plots
+
+% OMP
+hold on
+plot(Core_vecOMP, OMP_speedup_strong, "-x");
+line([1, 64], [1, 64])
+title("Strong Scaling OpenMP")
+legend("Real Speedup", "Ideal Speedup")
+xlabel("Thread Count")
+ylabel("Speedup")
+hold off
+close
+
+% MPI
+hold on
+plot(Core_vecMPI, MPI_speedup_strong, "-x");
+line([2, 64], [2, 64])
+title("Strong Scaling OpenMPI")
+legend("Real Speedup", "Ideal Speedup")
+xlabel("Thread Count")
+ylabel("Speedup")
+hold off
+close
+
+workloadOMP = diag(avg_runtimeOMP);
+workloadMPI = diag(avg_runtimeMPI);
+
+OMP_speedup_weak = workloadOMP(1) ./ workloadOMP;
+MPI_speedup_weak = workloadMPI(1) ./ workloadMPI;
+
+% Weak scaling plots
+
+% OMP
+hold on
+plot(Core_vecOMP, OMP_speedup_weak, "-x");
+line([1, 64], [1, 1])
+legend("Real Efficiency", "Ideal Efficiency")
+title("Weak Scaling OpenMP")
+xlabel("Thread Count")
+ylabel("Speedup")
+hold off
+close
+
+% MPI
+hold on
+plot(Core_vecMPI, MPI_speedup_weak, "-x");
+line([2, 64], [1, 1]);
+legend("Real Efficiency", "Ideal Efficiency")
+title("Weak Scaling OpenMPI")
+xlabel("Thread Count")
+ylabel("Speedup")
+hold off
+close
+
+% Errorbar plots
+
+% OMP
+errorbar(N_vec, log(avg_runtimeOMP), log(std_runtimeOMP))
+title("Average runtime with errorbars OpenMP")
+legend("1", "2", "4", "8", "16", "32", "64")
+xlabel("Grid side length")
+ylabel("Log runtime")
+
+% MPI
+errorbar(N_vec, log(avg_runtimeMPI), log(std_runtimeMPI))
+title("Average runtime with errorbars OpenMPI")
+legend("2", "4", "8", "16", "32", "64")
+xlabel("Grid side length")
+ylabel("Log runtime")
