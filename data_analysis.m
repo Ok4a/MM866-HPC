@@ -5,8 +5,9 @@ close
 OMP_data = readmatrix("OMPdata_1733390325.csv");
 MPI_data = readmatrix("MPIdata_1733390385.csv");
 
-% Extract runtime data from OMP matrix
-runtime_OMP = reshape(OMP_data(:, 7), [8,7,5]);
+% Extract runtime data from OMP matrix. 8, 7, and 5 are for the numbers
+% N, numbers of core counts and number of runs respectively
+runtime_OMP = reshape(OMP_data(:, 7), [8, 7, 5]);
 
 % Matrices of averages and standard deviations of runtime for OMP
 % where row i and column j is the avg/std for side length i and
@@ -14,7 +15,8 @@ runtime_OMP = reshape(OMP_data(:, 7), [8,7,5]);
 avg_runtimeOMP = mean(runtime_OMP, 3);
 std_runtimeOMP = std(runtime_OMP, 0, 3);
 
-% Extract runtime data from MPI matrix
+% Extract runtime data from MPI matrix. For MPI we used 6 different core
+% counts instead of 7
 runtime_MPI = reshape(MPI_data(:, 7), [8, 6, 5]);
 
 % Same as for OMP, now for MPI
@@ -43,6 +45,7 @@ legend("Real Speedup", "Ideal Speedup")
 xlabel("Thread Count")
 ylabel("Speedup")
 hold off
+set(gcf, "Position", [100, 100, 1100, 700])
 close
 
 % MPI
@@ -54,11 +57,14 @@ legend("Real Speedup", "Ideal Speedup")
 xlabel("Thread Count")
 ylabel("Speedup")
 hold off
+set(gcf, "Position", [100, 100, 1100, 700])
 close
 
+% Extract diagonal entries of avg_runtime as the workload
 workloadOMP = diag(avg_runtimeOMP);
 workloadMPI = diag(avg_runtimeMPI);
 
+% Compute speed up in relation to workload
 OMP_speedup_weak = workloadOMP(1) ./ workloadOMP;
 MPI_speedup_weak = workloadMPI(1) ./ workloadMPI;
 
@@ -73,6 +79,7 @@ title("Weak Scaling OpenMP")
 xlabel("Thread Count")
 ylabel("Speedup")
 hold off
+set(gcf, "Position", [100, 100, 1100, 700])
 close
 
 % MPI
@@ -84,6 +91,7 @@ title("Weak Scaling OpenMPI")
 xlabel("Thread Count")
 ylabel("Speedup")
 hold off
+set(gcf, "Position", [100, 100, 1100, 700])
 close
 
 % Errorbar plots
@@ -94,6 +102,8 @@ title("Average runtime with errorbars OpenMP")
 legend("1", "2", "4", "8", "16", "32", "64")
 xlabel("Grid side length")
 ylabel("Log runtime")
+set(gcf, "Position", [100, 100, 1100, 700])
+close
 
 % MPI
 errorbar(N_vec, log(avg_runtimeMPI), log(std_runtimeMPI))
@@ -101,3 +111,5 @@ title("Average runtime with errorbars OpenMPI")
 legend("2", "4", "8", "16", "32", "64")
 xlabel("Grid side length")
 ylabel("Log runtime")
+set(gcf, "Position", [100, 100, 1100, 700])
+close
