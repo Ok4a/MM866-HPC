@@ -20,7 +20,7 @@ double magn(int N, int num_rows)
     double sum = 0.0;
 
     // Parallelize the double for loop over the grid
-    for (i = 1; i < num_rows-1; i++)
+    for (i = 1; i < num_rows - 1; i++)
     {
         for (j = 0; j < N; j++)
         {
@@ -52,7 +52,7 @@ int energy(int N, int num_rows)
     int down;
     
     // Parallelize the double for loop over the grid
-    for (i = 1; i < num_rows-1; i++)
+    for (i = 1; i < num_rows - 1; i++)
     {
         for (j = 0; j < N; j++)
         {
@@ -102,7 +102,6 @@ int energy_diff(int N, int i, int j)
 // Takes grid length N, parameter beta, grid indices start_i and start_j and a seed as input.
 void sweep(int N, int num_rows, double beta, unsigned int seed, int id, int num_threads)
     {
-
     MPI_Status status1;
     MPI_Request req1;
     // Indices for grid position
@@ -119,7 +118,7 @@ void sweep(int N, int num_rows, double beta, unsigned int seed, int id, int num_
     // Parallelize double for loop over the grid
     for (i = 1; i < num_rows - 1; i++)
     {
-        if (i = 2)
+        if (i == 2)
         {
             /* The following line sends the second row of the grid in thread with current id to
             the thread with id - 1. It does after having modified the second row by flipping
@@ -127,7 +126,7 @@ void sweep(int N, int num_rows, double beta, unsigned int seed, int id, int num_
             MPI_Isend(grid[1], N, MPI_INT, (id - 1 + num_threads) % num_threads, id+100, MPI_COMM_WORLD, &req1);
         }
 
-        if (i = num_rows - 2)
+        if (i == num_rows - 2)
         {
             /* Thread*with current id receives the final row of the grid in the thread with id + 1*/
             MPI_Recv(grid[num_rows - 1], N, MPI_INT, (id + 1 + num_threads) % num_threads, (id + 1 + num_threads) % num_threads + 100, MPI_COMM_WORLD, &status1);
@@ -183,15 +182,12 @@ void sweep(int N, int num_rows, double beta, unsigned int seed, int id, int num_
 // Function that simulates the ISING model
 double* ising(int N, double beta, int id, int num_threads)
 {    
-
-    
-
     MPI_Status status;
     MPI_Request req;
     
     /* Each thread has a grid of dimension num_rows by N.
     num_rows is computed as N / num_threads + 2*/
-    int num_rows = N / num_threads + 2;
+    int num_rows = (N / num_threads) + 2;
 
     /* Indices for allocating space for the grids and for
     initializing the grid*/
@@ -254,7 +250,7 @@ double* ising(int N, double beta, int id, int num_threads)
         {
             /* Creates a random int 0 or 1*/
             r = rand_r(&seed) % 2;
-            if (r)
+            if (r == 1)
             {
                 /* Sets spin at grid entry [i][j] to be +1 if r == 1*/
                 grid[i][j] = 1;
@@ -284,6 +280,7 @@ double* ising(int N, double beta, int id, int num_threads)
         MPI_Recv(grid[num_rows - 1], N, MPI_INT, (id + 1 + num_threads) % num_threads, (id + 1 + num_threads) % num_threads, MPI_COMM_WORLD, &status);
         MPI_Recv(grid[0], N, MPI_INT, (id - 1 + num_threads) % num_threads, (id - 1 + num_threads) % num_threads, MPI_COMM_WORLD, &status);
     }
+
     if ((id % 2) == 1)
     {
         // Resv grid information from threads with even id to threads with id+-1  
@@ -366,7 +363,6 @@ double* ising(int N, double beta, int id, int num_threads)
 /* Main function which simulates the ISING model for different grid sizes*/
 void main(int argc, char **argv)
 {
-
     /* Initializes the MPI environment*/
     MPI_Init(NULL, NULL);
     
