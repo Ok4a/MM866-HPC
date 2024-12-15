@@ -1,7 +1,7 @@
 clc; clear; close;
 % Load data
-OMP_data = readmatrix("OMPdata_1733390325.csv");
-MPI_data = readmatrix("MPIdata_1733910289.csv");
+OMP_data = readmatrix("Real stuff/OMPdata_1733390325.csv");
+MPI_data = readmatrix("Real stuff/MPIdata_1733910289.csv");
 
 % Extract runtime data from OMP matrix. 8, 7, and 5 are for the numbers
 % N, numbers of core counts and number of runs respectively
@@ -93,21 +93,23 @@ close
 % Errorbar plots
 
 % OMP
-errorbar(N_vec, log(avg_runtimeOMP), log(std_runtimeOMP))
+errorbar((N_vec), (avg_runtimeOMP), (std_runtimeOMP))
 title("Average runtime with errorbars OpenMP")
 %axis("tight")
+xticks((N_vec))
 legend("1", "2", "4", "8", "16", "32", "64", "Location","northwest")
 xlabel("Grid side length")
-ylabel("Log runtime")
+ylabel("Runtime")
 set(gcf, "Position", [100, 100, 900, 500])
 close
 
 % MPI
-errorbar(N_vec, log(avg_runtimeMPI), log(std_runtimeMPI))
+errorbar(N_vec, (avg_runtimeMPI), (std_runtimeMPI))
 title("Average runtime with errorbars OpenMPI")
 %axis("tight")
+xticks(N_vec)
 legend("2", "4", "8", "16", "32", "64", "Location","northwest")
 xlabel("Grid side length")
-ylabel("Log runtime")
+ylabel("Runtime")
 set(gcf, "Position", [100, 100, 900, 500])
 close
