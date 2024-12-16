@@ -374,6 +374,5 @@ void main(int argc, char **argv)
             // We then close the file
             fclose(data_file);
         }    
-    }
-    
+    }   
 }
